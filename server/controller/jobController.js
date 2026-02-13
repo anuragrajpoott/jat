@@ -1,4 +1,4 @@
-const Job = require("../model/Job");
+const Job = require("../models/Job");
 
 // Create Job
 exports.createJob = async (req, res) => {
@@ -10,57 +10,97 @@ exports.createJob = async (req, res) => {
   }
 };
 
-// Get All Jobs
+// Get All Jobs (with pagination + search)
 exports.getJobs = async (req, res) => {
   try {
-    const { status, search } = req.query;
+    const { status, search, page = 1, limit = 10 } = req.query;
 
-    let query = {};
+    const query = {};
 
     if (status) query.status = status;
+    if (search) query.$text = { $search: search };
 
-    if (search) {
-      query.$text = { $search: search };
-    }
+    const jobs = await Job.find(
+      query,
+      search ? { score: { $meta: "textScore" } } : {}
+    )
+      .sort(
+        search
+          ? { score: { $meta: "textScore" } }
+          : { createdAt: -1 }
+      )
+      .skip((page - 1) * limit)
+      .limit(Number(limit));
 
-    const jobs = await Job.find(query).sort({ createdAt: -1 });
+    const total = await Job.countDocuments(query);
 
-    res.json(jobs);
+    res.json({
+      total,
+      page: Number(page),
+      pages: Math.ceil(total / limit),
+      jobs,
+    });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 };
 
-// Update Job
+// Get Single Job
+exports.getJobById = async (req, res) => {
+  try {
+    const job = await Job.findById(req.params.id);
+
+    if (!job) {
+      return res.status(404).json({ message: "Job not found" });
+    }
+
+    res.json(job);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+};
+
+// Update Job (safe update)
 exports.updateJob = async (req, res) => {
   try {
-    const existingJob = await Job.findById(req.params.id);
+    const job = await Job.findById(req.params.id);
 
-if (!existingJob) {
-  return res.status(404).json({ message: "Job not found" });
-}
+    if (!job) {
+      return res.status(404).json({ message: "Job not found" });
+    }
 
-let activityEntry = null;
+    const allowedUpdates = [
+      "company",
+      "role",
+      "status",
+      "priority",
+      "source",
+      "jobUrl",
+      "salary",
+      "location",
+      "notes",
+      "appliedDate",
+      "followUpDate",
+    ];
 
-if (req.body.status && req.body.status !== existingJob.status) {
-  activityEntry = {
-    type: "status_change",
-    message: `Status changed from ${existingJob.status} to ${req.body.status}`,
-  };
-}
+    const oldStatus = job.status;
 
-Object.assign(existingJob, req.body);
+    allowedUpdates.forEach((field) => {
+      if (req.body[field] !== undefined) {
+        job[field] = req.body[field];
+      }
+    });
 
-if (activityEntry) {
-  existingJob.activity.push(activityEntry);
-}
+    if (req.body.status && req.body.status !== oldStatus) {
+      job.activity.push({
+        eventType: "status_change",
+        message: `Status changed from ${oldStatus} to ${req.body.status}`,
+      });
+    }
 
-const updatedJob = await existingJob.save();
+    const updatedJob = await job.save();
+    res.json(updatedJob);
 
-res.json(updatedJob);
-
-
-    
   } catch (err) {
     res.status(400).json({ message: err.message });
   }
@@ -69,8 +109,14 @@ res.json(updatedJob);
 // Delete Job
 exports.deleteJob = async (req, res) => {
   try {
-    await Job.findByIdAndDelete(req.params.id);
-    res.json({ message: "Job deleted" });
+    const job = await Job.findByIdAndDelete(req.params.id);
+
+    if (!job) {
+      return res.status(404).json({ message: "Job not found" });
+    }
+
+    res.json({ message: "Job deleted successfully" });
+
   } catch (err) {
     res.status(400).json({ message: err.message });
   }

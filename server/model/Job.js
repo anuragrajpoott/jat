@@ -1,5 +1,24 @@
 const mongoose = require("mongoose");
 
+const activitySchema = new mongoose.Schema(
+  {
+    eventType: {
+      type: String,
+      enum: ["note", "status_change", "email", "call", "interview"],
+      required: true,
+    },
+    message: {
+      type: String,
+      trim: true,
+    },
+    date: {
+      type: Date,
+      default: Date.now,
+    },
+  },
+  { _id: false }
+);
+
 const jobSchema = new mongoose.Schema(
   {
     company: {
@@ -12,18 +31,7 @@ const jobSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
-    activity: [
-  {
-    type: {
-      type: String,
-    },
-    message: String,
-    date: {
-      type: Date,
-      default: Date.now,
-    },
-  },
-],
+    activity: [activitySchema],
 
     status: {
       type: String,
@@ -39,14 +47,29 @@ const jobSchema = new mongoose.Schema(
       ],
       default: "saved",
     },
+
     priority: {
       type: String,
       enum: ["low", "medium", "high"],
       default: "medium",
     },
+
     source: String,
-    jobUrl: String,
-    salary: String,
+
+    jobUrl: {
+      type: String,
+      match: /^https?:\/\/.+/,
+    },
+
+    salary: {
+      min: Number,
+      max: Number,
+      currency: {
+        type: String,
+        default: "USD",
+      },
+    },
+
     location: String,
     notes: String,
     appliedDate: Date,
@@ -55,9 +78,24 @@ const jobSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// useful indexes
-jobSchema.index({ status: 1 });
-jobSchema.index({ priority: 1 });
+// Indexes
+jobSchema.index({ status: 1, priority: 1 });
 jobSchema.index({ company: "text", role: "text" });
+
+// Middleware
+jobSchema.pre("save", function (next) {
+  if (this.isModified("status")) {
+    if (this.status === "applied" && !this.appliedDate) {
+      this.appliedDate = new Date();
+    }
+
+    this.activity.push({
+      eventType: "status_change",
+      message: `Status changed to ${this.status}`,
+    });
+  }
+
+  next();
+});
 
 module.exports = mongoose.model("Job", jobSchema);
