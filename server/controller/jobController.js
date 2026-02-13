@@ -34,13 +34,33 @@ exports.getJobs = async (req, res) => {
 // Update Job
 exports.updateJob = async (req, res) => {
   try {
-    const job = await Job.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true }
-    );
+    const existingJob = await Job.findById(req.params.id);
 
-    res.json(job);
+if (!existingJob) {
+  return res.status(404).json({ message: "Job not found" });
+}
+
+let activityEntry = null;
+
+if (req.body.status && req.body.status !== existingJob.status) {
+  activityEntry = {
+    type: "status_change",
+    message: `Status changed from ${existingJob.status} to ${req.body.status}`,
+  };
+}
+
+Object.assign(existingJob, req.body);
+
+if (activityEntry) {
+  existingJob.activity.push(activityEntry);
+}
+
+const updatedJob = await existingJob.save();
+
+res.json(updatedJob);
+
+
+    
   } catch (err) {
     res.status(400).json({ message: err.message });
   }

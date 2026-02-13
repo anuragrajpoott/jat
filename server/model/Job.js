@@ -12,6 +12,19 @@ const jobSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    activity: [
+  {
+    type: {
+      type: String,
+    },
+    message: String,
+    date: {
+      type: Date,
+      default: Date.now,
+    },
+  },
+],
+
     status: {
       type: String,
       enum: [
