@@ -1,56 +1,63 @@
-import { Draggable } from "@hello-pangea/dnd";
 import React from "react";
+import { Draggable } from "@hello-pangea/dnd";
 
 const JobCard = ({ job, index, setSelectedJob }) => {
-
-    const priorityColor = {
-  low: "bg-green-100 text-green-700",
-  medium: "bg-yellow-100 text-yellow-700",
-  high: "bg-red-100 text-red-700",
-};
-
-const JobCard = ({ job, index, setSelectedJob })
-
+  const priorityColor = {
+    low: "bg-green-900 text-green-300",
+    medium: "bg-yellow-900 text-yellow-300",
+    high: "bg-red-900 text-red-300",
+  };
 
   const isFollowUpDue =
-    job.followUpDate && new Date(job.followUpDate) <= new Date();
+    job.followUpDate &&
+    new Date(job.followUpDate) <= new Date();
 
   return (
     <Draggable draggableId={job._id} index={index}>
-      {(provided) => (
+      {(provided, snapshot) => (
         <div
           ref={provided.innerRef}
           {...provided.draggableProps}
           {...provided.dragHandleProps}
-          onClick={() => setSelectedJob(job)}
-
-          className="bg-slate-800 border border-slate-700 rounded-xl p-4 hover:border-blue-500 transition cursor-pointer"
-
+          onClick={() => {
+            if (!snapshot.isDragging) {
+              setSelectedJob(job);
+            }
+          }}
+          className={`bg-slate-800 border rounded-xl p-4 cursor-pointer transition
+            ${
+              snapshot.isDragging
+                ? "border-blue-500 shadow-lg scale-[1.02]"
+                : "border-slate-700 hover:border-blue-500"
+            }`}
         >
-          <h3 className="font-semibold">{job.company}</h3>
-          <p className="text-sm text-gray-600">{job.role}</p>
+          {/* Header */}
+          <div className="flex justify-between items-start mb-2">
+            <div>
+              <h3 className="font-semibold text-slate-100">
+                {job.company}
+              </h3>
+              <p className="text-sm text-slate-400">
+                {job.role}
+              </p>
+            </div>
 
-          {isFollowUpDue && (
-            <span className="text-xs text-red-500 font-semibold">
-              Follow up needed
+            <span
+              className={`text-xs px-2 py-1 rounded-full ${
+                priorityColor[job.priority] ||
+                "bg-slate-700 text-slate-300"
+              }`}
+            >
+              {job.priority}
             </span>
+          </div>
+
+          {/* Follow-up Indicator */}
+          {isFollowUpDue && (
+            <div className="text-xs text-red-400 font-medium mt-2">
+              ⚠ Follow-up needed
+            </div>
           )}
-
-          <div className="flex justify-between items-center mb-2">
-  <span
-    className={`text-xs px-2 py-1 rounded-full ${priorityColor[job.priority]}`}
-  >
-    {job.priority}
-  </span>
-
-  {job.followUpDate &&
-    new Date(job.followUpDate) <= new Date() && (
-      <span className="text-xs text-red-500 font-semibold">
-        Follow up
-      </span>
-    )}
-</div>
-
         </div>
       )}
     </Draggable>

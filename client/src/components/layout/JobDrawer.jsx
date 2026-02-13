@@ -1,28 +1,34 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { updateJob, deleteJob } from "../../apis/jobs";
 import { STATUS_COLUMNS } from "../../constants/statusColumns";
-import React from "react";
 
 const JobDrawer = ({ job, onClose, setJobs }) => {
-
-    const [isOpen, setIsOpen] = useState(false);
-
-useEffect(() => {
-  setIsOpen(true);
-}, []);
-
+  const [isOpen, setIsOpen] = useState(false);
   const [formData, setFormData] = useState(job);
+  const [loading, setLoading] = useState(false);
 
-  // Close on ESC
+  useEffect(() => {
+    setIsOpen(true);
+  }, []);
+
+  // Sync if job changes
+  useEffect(() => {
+    setFormData(job);
+  }, [job]);
+
+  const closeDrawer = () => {
+    setIsOpen(false);
+    setTimeout(onClose, 200);
+  };
+
+  // ESC Close
   useEffect(() => {
     const handleEsc = (e) => {
-      if (e.key === "Escape") setIsOpen(false);
-setTimeout(onClose, 200);
-;
+      if (e.key === "Escape") closeDrawer();
     };
     window.addEventListener("keydown", handleEsc);
     return () => window.removeEventListener("keydown", handleEsc);
-  }, [onClose]);
+  }, []);
 
   const handleChange = (e) => {
     setFormData({
@@ -32,54 +38,59 @@ setTimeout(onClose, 200);
   };
 
   const handleSave = async () => {
-    const { data } = await updateJob(job._id, formData);
+    try {
+      setLoading(true);
+      const { data } = await updateJob(job._id, formData);
 
-    setJobs((prev) =>
-      prev.map((j) => (j._id === job._id ? data : j))
-    );
+      setJobs((prev) =>
+        prev.map((j) => (j._id === job._id ? data : j))
+      );
 
-    setIsOpen(false);
-setTimeout(onClose, 200);
-
+      closeDrawer();
+    } catch (error) {
+      console.error("Save failed:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleDelete = async () => {
-    await deleteJob(job._id);
+    try {
+      setLoading(true);
+      await deleteJob(job._id);
 
-    setJobs((prev) =>
-      prev.filter((j) => j._id !== job._id)
-    );
+      setJobs((prev) =>
+        prev.filter((j) => j._id !== job._id)
+      );
 
-    setIsOpen(false);
-setTimeout(onClose, 200);
-;
+      closeDrawer();
+    } catch (error) {
+      console.error("Delete failed:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div
-  className={`fixed inset-0 backdrop-blur-sm bg-black/40 flex justify-end z-50 transition-opacity duration-300 ${
-    isOpen ? "opacity-100" : "opacity-0"
-  }`}
-  onClick={() => {
-    setIsOpen(false);
-    setTimeout(onClose, 200);
-  }}
->
-
+      className={`fixed inset-0 backdrop-blur-sm bg-black/40 flex justify-end z-50 transition-opacity duration-300 ${
+        isOpen ? "opacity-100" : "opacity-0"
+      }`}
+      onClick={closeDrawer}
+    >
       <div
-  onClick={(e) => e.stopPropagation()}
-  className={`w-130 h-full bg-slate-900 border-l border-slate-800 shadow-2xl p-6 overflow-y-auto transform transition-transform duration-300 ease-out ${
-    isOpen ? "translate-x-0" : "translate-x-full"
-  }`}
->
-
+        onClick={(e) => e.stopPropagation()}
+        className={`w-130 h-full bg-slate-900 border-l border-slate-800 shadow-2xl p-6 overflow-y-auto transform transition-transform duration-300 ease-out ${
+          isOpen ? "translate-x-0" : "translate-x-full"
+        }`}
+      >
         {/* Header */}
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-semibold">
             Application Details
           </h2>
           <button
-            onClick={onClose}
+            onClick={closeDrawer}
             className="text-slate-400 hover:text-white"
           >
             ✕
@@ -113,7 +124,7 @@ setTimeout(onClose, 200);
           </div>
         </div>
 
-        {/* Status & Priority Row */}
+        {/* Status & Priority */}
         <div className="grid grid-cols-2 gap-4 mb-6">
           <div>
             <label className="text-sm text-slate-400 block mb-1">
@@ -125,9 +136,9 @@ setTimeout(onClose, 200);
               onChange={handleChange}
               className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2"
             >
-              {STATUS_COLUMNS.map((status) => (
-                <option key={status} value={status}>
-                  {status}
+              {STATUS_COLUMNS.map((column) => (
+                <option key={column.key} value={column.key}>
+                  {column.label}
                 </option>
               ))}
             </select>
@@ -150,111 +161,53 @@ setTimeout(onClose, 200);
           </div>
         </div>
 
-        {/* Meta Section */}
-        <div className="space-y-4 mb-6">
-          <div>
-            <label className="text-sm text-slate-400 block mb-1">
-              Location
-            </label>
-            <input
-              name="location"
-              value={formData.location || ""}
-              onChange={handleChange}
-              className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2"
-            />
-          </div>
-
-          <div>
-            <label className="text-sm text-slate-400 block mb-1">
-              Job URL
-            </label>
-            <input
-              name="jobUrl"
-              value={formData.jobUrl || ""}
-              onChange={handleChange}
-              className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2"
-            />
-          </div>
-
-          <div>
-            <label className="text-sm text-slate-400 block mb-1">
-              Follow Up Date
-            </label>
-            <input
-              type="date"
-              name="followUpDate"
-              value={
-                formData.followUpDate
-                  ? formData.followUpDate.slice(0, 10)
-                  : ""
-              }
-              onChange={handleChange}
-              className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2"
-            />
-          </div>
-        </div>
-
-        {/* Notes */}
-        <div className="mb-6">
-          <label className="text-sm text-slate-400 block mb-1">
-            Notes
-          </label>
-          <textarea
-            name="notes"
-            rows="4"
-            value={formData.notes || ""}
-            onChange={handleChange}
-            className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 resize-none"
-          />
-        </div>
-
         {/* Activity Timeline */}
-<div className="mb-8">
-  <h3 className="text-sm text-slate-400 mb-3">
-    Activity
-  </h3>
+        <div className="mb-8">
+          <h3 className="text-sm text-slate-400 mb-3">
+            Activity
+          </h3>
 
-  <div className="space-y-3">
-    {formData.activity && formData.activity.length > 0 ? (
-      formData.activity
-        .slice()
-        .reverse()
-        .map((item, index) => (
-          <div
-            key={index}
-            className="bg-slate-800 border border-slate-700 rounded-lg p-3"
-          >
-            <div className="text-sm text-slate-300">
-              {item.message}
-            </div>
-            <div className="text-xs text-slate-500 mt-1">
-              {new Date(item.date).toLocaleString()}
-            </div>
+          <div className="space-y-3">
+            {formData.activity?.length ? (
+              [...formData.activity]
+                .reverse()
+                .map((item) => (
+                  <div
+                    key={`${item.date}-${item.message}`}
+                    className="bg-slate-800 border border-slate-700 rounded-lg p-3"
+                  >
+                    <div className="text-sm text-slate-300">
+                      {item.message}
+                    </div>
+                    <div className="text-xs text-slate-500 mt-1">
+                      {new Date(item.date).toLocaleString()}
+                    </div>
+                  </div>
+                ))
+            ) : (
+              <div className="text-xs text-slate-500">
+                No activity yet
+              </div>
+            )}
           </div>
-        ))
-    ) : (
-      <div className="text-xs text-slate-500">
-        No activity yet
-      </div>
-    )}
-  </div>
-</div>
-
+        </div>
 
         {/* Actions */}
         <div className="flex justify-between items-center pt-4 border-t border-slate-800">
           <button
             onClick={handleDelete}
-            className="text-red-500 hover:text-red-400"
+            disabled={loading}
+            className="text-red-500 hover:text-red-400 disabled:opacity-50"
           >
             Delete Application
           </button>
 
           <button
             onClick={handleSave}
-            className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 transition font-medium"
+            disabled={loading}
+            className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 transition font-medium disabled:opacity-50"
           >
-            Save Changes
+            {loading ? "Saving..." : "Save Changes"}
           </button>
         </div>
       </div>
