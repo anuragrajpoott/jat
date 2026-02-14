@@ -15,7 +15,7 @@ const app = express();
 // CORS
 app.use(
   cors({
-    origin: process.env.CLIENT_URL || "*",
+    origin: "https://jat-navy.vercel.app",
     credentials: true,
   })
 );
