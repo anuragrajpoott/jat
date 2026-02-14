@@ -1,46 +1,19 @@
-import React, { useState, useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { fetchJobs } from "../apis/jobs";
-
-import KanbanBoard from "../components/kanban/KanbanBoard";
-import AddJobModal from "../components/modals/AddJobModal";
-import JobDrawer from "../components/layout/JobDrawer";
-import StatCard from "../components/layout/StatsCard";
-import JobTable from "../components/table/JobTable";
-import AnalyticsDashboard from "../components/analytics/AnalyticsDashboard";
+import AddJobForm from "../components/AddJobForm";
+import JobTable from "../components/JobTable";
+import React from "react";
 
 const Dashboard = () => {
-  const [activeTab, setActiveTab] = useState("board"); // board | analytics
-  const [viewMode, setViewMode] = useState("kanban"); // kanban | table
-
-  const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [priorityFilter, setPriorityFilter] = useState("all");
-
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const [showModal, setShowModal] = useState(false);
-  const [selectedJob, setSelectedJob] = useState(null);
-
-  // -----------------------------
-  // Debounce search
-  // -----------------------------
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedSearch(search);
-    }, 300);
-
-    return () => clearTimeout(handler);
-  }, [search]);
-
-  // -----------------------------
-  // Load Jobs
-  // -----------------------------
   const loadJobs = async () => {
     try {
       setLoading(true);
-      const { data } = await fetchJobs();
-      setJobs(data.jobs); // important for paginated backend
+      const res = await fetchJobs();
+      setJobs(res.data);
     } catch (error) {
       console.error("Failed to load jobs:", error);
     } finally {
@@ -52,216 +25,97 @@ const Dashboard = () => {
     loadJobs();
   }, []);
 
-  // -----------------------------
-  // Filtered Jobs
-  // -----------------------------
-  const filteredJobs = useMemo(() => {
-    return jobs.filter((job) => {
-      const matchesSearch =
-        job.company
-          .toLowerCase()
-          .includes(debouncedSearch.toLowerCase()) ||
-        job.role
-          .toLowerCase()
-          .includes(debouncedSearch.toLowerCase());
-
-      const matchesPriority =
-        priorityFilter === "all" ||
-        job.priority === priorityFilter;
-
-      return matchesSearch && matchesPriority;
-    });
-  }, [jobs, debouncedSearch, priorityFilter]);
-
-  // -----------------------------
-  // Stats Calculation
-  // -----------------------------
   const stats = useMemo(() => {
     const total = jobs.length;
-
-    const appliedCount = jobs.filter(
-      (job) => job.status === "applied"
+    const applied = jobs.filter(j => j.status === "applied").length;
+    const interview = jobs.filter(j =>
+      ["interview", "shortlisted"].includes(j.status)
     ).length;
+    const offer = jobs.filter(j => j.status === "offer").length;
 
-    const interviewCount = jobs.filter((job) =>
-      ["interview", "final", "screening"].includes(job.status)
-    ).length;
-
-    const offerCount = jobs.filter(
-      (job) => job.status === "offer"
-    ).length;
-
-    const rejectedCount = jobs.filter((job) =>
-      ["rejected", "ghosted"].includes(job.status)
-    ).length;
-
-    const responseRate =
-      appliedCount > 0
-        ? ((interviewCount / appliedCount) * 100).toFixed(0)
-        : 0;
-
-    return {
-      total,
-      appliedCount,
-      interviewCount,
-      offerCount,
-      rejectedCount,
-      responseRate,
-    };
+    return { total, applied, interview, offer };
   }, [jobs]);
 
-  // -----------------------------
-  // Render
-  // -----------------------------
   return (
-    <div className="h-screen flex flex-col bg-slate-950 text-slate-200">
+    <div className="min-h-screen bg-slate-950 text-slate-200 px-8 py-10">
 
-      {/* Header */}
-      <div className="flex justify-between items-center px-6 py-4 border-b border-slate-800 bg-slate-900">
-        <h1 className="text-2xl font-semibold tracking-tight">
-          My Applications
-        </h1>
-
-        <div className="flex gap-3 items-center">
-
-          {/* Search */}
-          <input
-            type="text"
-            placeholder="Search..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="bg-slate-800 border border-slate-700 px-4 py-2 rounded-lg w-64 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-
-          {/* Priority Filter */}
-          <select
-            value={priorityFilter}
-            onChange={(e) => setPriorityFilter(e.target.value)}
-            className="bg-slate-800 border border-slate-700 px-3 py-2 rounded-lg"
-          >
-            <option value="all">All</option>
-            <option value="high">High</option>
-            <option value="medium">Medium</option>
-            <option value="low">Low</option>
-          </select>
-
-          {/* View Switch */}
-          <div className="flex bg-slate-800 rounded-lg overflow-hidden border border-slate-700">
-            <button
-              onClick={() => setViewMode("kanban")}
-              className={`px-3 py-2 text-sm ${
-                viewMode === "kanban"
-                  ? "bg-slate-700 text-white"
-                  : "text-slate-400"
-              }`}
-            >
-              Kanban
-            </button>
-
-            <button
-              onClick={() => setViewMode("table")}
-              className={`px-3 py-2 text-sm ${
-                viewMode === "table"
-                  ? "bg-slate-700 text-white"
-                  : "text-slate-400"
-              }`}
-            >
-              Table
-            </button>
-          </div>
-
-          {/* Add Button */}
-          <button
-            onClick={() => setShowModal(true)}
-            className="bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded-lg font-medium transition"
-          >
-            + Add
-          </button>
+      {/* Header + Add Button */}
+      <div className="mb-10 flex justify-between items-start">
+        <div>
+          <h1 className="text-3xl font-serif tracking-wide">
+            Job Application Tracker
+          </h1>
+          <p className="text-slate-400 mt-1">
+            Track applications. Stay consistent. Stay focused.
+          </p>
         </div>
-      </div>
-
-      {/* Tabs */}
-      <div className="flex gap-4 px-6 pt-4">
-        <button
-          onClick={() => setActiveTab("board")}
-          className={`pb-2 border-b-2 ${
-            activeTab === "board"
-              ? "border-blue-500 text-white"
-              : "border-transparent text-slate-400"
-          }`}
-        >
-          Board
-        </button>
 
         <button
-          onClick={() => setActiveTab("analytics")}
-          className={`pb-2 border-b-2 ${
-            activeTab === "analytics"
-              ? "border-blue-500 text-white"
-              : "border-transparent text-slate-400"
-          }`}
+          onClick={() => setIsModalOpen(true)}
+          className="bg-slate-800 hover:bg-slate-700 border border-slate-700 
+                     px-5 py-2 rounded-full text-sm transition"
         >
-          Analytics
+          + Add Application
         </button>
       </div>
 
-      {/* Stats */}
-      <div className="px-6 py-4 bg-slate-900 border-b border-slate-800">
-        <div className="grid grid-cols-6 gap-4">
-          <StatCard label="Total" value={stats.total} />
-          <StatCard label="Applied" value={stats.appliedCount} />
-          <StatCard label="Interviews" value={stats.interviewCount} />
-          <StatCard label="Offers" value={stats.offerCount} highlight="green" />
-          <StatCard label="Rejected" value={stats.rejectedCount} highlight="red" />
-          <StatCard
-            label="Response %"
-            value={`${stats.responseRate}%`}
-            highlight="blue"
-          />
-        </div>
+      {/* Mini Stats */}
+      <div className="grid grid-cols-4 gap-4 mb-8">
+        <MiniStat label="Total" value={stats.total} />
+        <MiniStat label="Applied" value={stats.applied} />
+        <MiniStat label="Interviews" value={stats.interview} />
+        <MiniStat label="Offers" value={stats.offer} />
       </div>
 
-      {/* Main Content */}
-      <div className="flex-1 overflow-hidden">
-
-        {loading ? (
-          <div className="flex justify-center items-center h-full text-slate-400">
-            Loading jobs...
-          </div>
-        ) : activeTab === "board" ? (
-          viewMode === "kanban" ? (
-            <KanbanBoard
-              jobs={filteredJobs}
-              setJobs={setJobs}
-              setSelectedJob={setSelectedJob}
-            />
-          ) : (
-            <JobTable
-              jobs={filteredJobs}
-              setSelectedJob={setSelectedJob}
-            />
-          )
-        ) : (
-          <AnalyticsDashboard jobs={jobs} />
-        )}
-      </div>
-
-      {/* Drawer */}
-      {selectedJob && (
-        <JobDrawer
-          job={selectedJob}
-          onClose={() => setSelectedJob(null)}
-          setJobs={setJobs}
-        />
+      {/* Table */}
+      {loading ? (
+        <p className="mt-6 text-slate-400">Loading...</p>
+      ) : (
+        <JobTable jobs={jobs} setJobs={setJobs} />
       )}
 
       {/* Modal */}
-      {showModal && (
-        <AddJobModal
-          setShowModal={setShowModal}
-          setJobs={setJobs}
-        />
+      {isModalOpen && (
+        <Modal onClose={() => setIsModalOpen(false)}>
+          <AddJobForm 
+            setJobs={setJobs} 
+            closeModal={() => setIsModalOpen(false)} 
+          />
+        </Modal>
       )}
+    </div>
+  );
+};
+
+const MiniStat = ({ label, value }) => (
+  <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+    <p className="text-xs text-slate-400 uppercase tracking-wide">
+      {label}
+    </p>
+    <p className="text-xl font-semibold mt-1">
+      {value}
+    </p>
+  </div>
+);
+
+/* Modal Component */
+const Modal = ({ children, onClose }) => {
+  useEffect(() => {
+    const handleEsc = (e) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleEsc);
+    return () => window.removeEventListener("keydown", handleEsc);
+  }, [onClose]);
+
+  return (
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm 
+                    flex items-center justify-center z-50">
+      <div className="bg-slate-900 border border-slate-800 
+                      rounded-2xl shadow-xl w-full max-w-lg p-8 
+                      animate-fadeIn">
+        {children}
+      </div>
     </div>
   );
 };

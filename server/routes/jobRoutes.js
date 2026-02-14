@@ -2,30 +2,37 @@ const express = require("express");
 const mongoose = require("mongoose");
 const router = express.Router();
 
-const {
-  createJob,
-  getJobs,
-  getJobById,
-  updateJob,
-  deleteJob,
-} = require("../controller/jobController");
+const jobController = require("../controller/jobController");
 
-// Validate MongoDB ID
+/*
+  Validate MongoDB ObjectId
+*/
 router.param("id", (req, res, next, id) => {
   if (!mongoose.Types.ObjectId.isValid(id)) {
-    return res.status(400).json({ message: "Invalid ID format" });
+    return res.status(400).json({
+      success: false,
+      message: "Invalid ID format",
+    });
   }
   next();
 });
 
-// Routes
-router.route("/")
-  .get(getJobs)
-  .post(createJob);
+/*
+  Routes
+*/
 
-router.route("/:id")
-  .get(getJobById)
-  .put(updateJob)
-  .delete(deleteJob);
+// GET /api/jobs  → list (with filters)
+// POST /api/jobs → create
+router
+  .route("/")
+  .get(jobController.getJobs)
+  .post(jobController.createJob);
+
+// PATCH /api/jobs/:id → partial update
+// DELETE /api/jobs/:id → delete
+router
+  .route("/:id")
+  .patch(jobController.updateJob)
+  .delete(jobController.deleteJob);
 
 module.exports = router;
