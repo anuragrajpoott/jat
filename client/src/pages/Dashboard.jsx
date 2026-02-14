@@ -49,9 +49,11 @@ const Dashboard = () => {
     const counts = {
       saved: 0,
       applied: 0,
+      shortlisted: 0,
       interview: 0,
       offer: 0,
       rejected: 0,
+
     };
 
     jobs.forEach((job) => {
@@ -130,15 +132,15 @@ const Dashboard = () => {
               options={[
                 "-createdAt",
                 "-appliedDate",
-                "appliedDate"
               ]} />
           </div>
         </div>
 
         {/* Stats Row */}
-        <div className="grid grid-cols-5 gap-4 mb-8">
+        <div className="grid grid-cols-6 gap-4 mb-8">
           <StatCard label="Saved" value={stats.saved} />
           <StatCard label="Applied" value={stats.applied} />
+           <StatCard label="Shortlisted" value={stats.shortlisted} />
           <StatCard label="Interview" value={stats.interview} />
           <StatCard label="Offer" value={stats.offer} />
           <StatCard label="Rejected" value={stats.rejected} />
