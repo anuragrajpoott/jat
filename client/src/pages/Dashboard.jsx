@@ -1,18 +1,38 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useContext } from "react";
 import { fetchJobs } from "../apis/jobs";
 import AddJobForm from "../components/AddJobForm";
 import JobTable from "../components/JobTable";
+import { ThemeContext } from "../context/ThemeContext";
 import React from "react";
+import Select from "../components/Select";
+import Modal from "../components/Modal";
+import StatCard from "../components/StatCard";
 
 const Dashboard = () => {
+  const { theme, toggleTheme } = useContext(ThemeContext);
+
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+  // Filters
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [priorityFilter, setPriorityFilter] = useState("all");
+  const [search, setSearch] = useState("");
+  const [sort, setSort] = useState("-createdAt");
+
   const loadJobs = async () => {
     try {
       setLoading(true);
-      const res = await fetchJobs();
+
+      const query = new URLSearchParams({
+        status: statusFilter,
+        priority: priorityFilter,
+        search,
+        sort,
+      }).toString();
+
+      const res = await fetchJobs(query);
       setJobs(res.data);
     } catch (error) {
       console.error("Failed to load jobs:", error);
@@ -23,63 +43,125 @@ const Dashboard = () => {
 
   useEffect(() => {
     loadJobs();
-  }, []);
+  }, [statusFilter, priorityFilter, search, sort]);
 
   const stats = useMemo(() => {
-    const total = jobs.length;
-    const applied = jobs.filter(j => j.status === "applied").length;
-    const interview = jobs.filter(j =>
-      ["interview", "shortlisted"].includes(j.status)
-    ).length;
-    const offer = jobs.filter(j => j.status === "offer").length;
+    const counts = {
+      saved: 0,
+      applied: 0,
+      interview: 0,
+      offer: 0,
+      rejected: 0,
+    };
 
-    return { total, applied, interview, offer };
+    jobs.forEach((job) => {
+      if (counts[job.status] !== undefined) {
+        counts[job.status]++;
+      }
+    });
+
+    return counts;
   }, [jobs]);
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-200 px-8 py-10">
+    <div className="min-h-screen bg-[#f3e6e6] dark:bg-slate-950 
+                    text-slate-800 dark:text-slate-200 
+                    transition-colors duration-300">
 
-      {/* Header + Add Button */}
-      <div className="mb-10 flex justify-between items-start">
-        <div>
-          <h1 className="text-3xl font-serif tracking-wide">
-            Job Application Tracker
-          </h1>
-          <p className="text-slate-400 mt-1">
-            Track applications. Stay consistent. Stay focused.
-          </p>
+      <div className="max-w-7xl mx-auto px-6 py-10">
+
+        {/* Header */}
+        <div className="flex justify-between items-start mb-10">
+          <div>
+            <h1 className="text-4xl font-serif tracking-wide">
+              Job Applications
+            </h1>
+            <p className="text-slate-500 dark:text-slate-400 mt-2">
+              Track applications. Stay focused.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <button
+              onClick={toggleTheme}
+              className="px-4 py-2 rounded-full border 
+                         border-slate-300 dark:border-slate-700
+                         hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+            >
+              {theme === "light" ? "Dark" : "Light"}
+            </button>
+
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="px-5 py-2 rounded-full bg-slate-800 
+                         text-white dark:bg-white dark:text-slate-900 
+                         hover:opacity-90 transition"
+            >
+              + Add
+            </button>
+          </div>
         </div>
 
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="bg-slate-800 hover:bg-slate-700 border border-slate-700 
-                     px-5 py-2 rounded-full text-sm transition"
-        >
-          + Add Application
-        </button>
-      </div>
+        {/* Filters Panel */}
+        <div className="bg-white dark:bg-slate-900 
+                        border border-[#e5caca] dark:border-slate-800 
+                        rounded-2xl p-6 mb-8">
+          <div className="grid grid-cols-4 gap-4">
 
-      {/* Mini Stats */}
-      <div className="grid grid-cols-4 gap-4 mb-8">
-        <MiniStat label="Total" value={stats.total} />
-        <MiniStat label="Applied" value={stats.applied} />
-        <MiniStat label="Interviews" value={stats.interview} />
-        <MiniStat label="Offers" value={stats.offer} />
-      </div>
+            <Select label="Status" value={statusFilter} onChange={setStatusFilter}
+              options={["all","saved","applied","shortlisted","interview","offer","rejected"]} />
 
-      {/* Table */}
-      {loading ? (
-        <p className="mt-6 text-slate-400">Loading...</p>
-      ) : (
-        <JobTable jobs={jobs} setJobs={setJobs} />
-      )}
+            <Select label="Priority" value={priorityFilter} onChange={setPriorityFilter}
+              options={["all","low","medium","high"]} />
+
+            <div>
+              <label className="block text-sm mb-1">Search</label>
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Company or role"
+                className="w-full border border-slate-300 
+                           dark:border-slate-700 
+                           bg-transparent rounded-lg px-3 py-2"
+              />
+            </div>
+
+            <Select label="Sort" value={sort} onChange={setSort}
+              options={[
+                "-createdAt",
+                "-appliedDate",
+                "appliedDate"
+              ]} />
+          </div>
+        </div>
+
+        {/* Stats Row */}
+        <div className="grid grid-cols-5 gap-4 mb-8">
+          <StatCard label="Saved" value={stats.saved} />
+          <StatCard label="Applied" value={stats.applied} />
+          <StatCard label="Interview" value={stats.interview} />
+          <StatCard label="Offer" value={stats.offer} />
+          <StatCard label="Rejected" value={stats.rejected} />
+        </div>
+
+        {/* Table */}
+        <div className="bg-white dark:bg-slate-900 
+                        border border-[#e5caca] dark:border-slate-800 
+                        rounded-2xl overflow-hidden">
+          {loading ? (
+            <p className="p-8 text-center">Loading...</p>
+          ) : (
+            <JobTable jobs={jobs} setJobs={setJobs} />
+          )}
+        </div>
+      </div>
 
       {/* Modal */}
       {isModalOpen && (
         <Modal onClose={() => setIsModalOpen(false)}>
-          <AddJobForm 
-            setJobs={setJobs} 
-            closeModal={() => setIsModalOpen(false)} 
+          <AddJobForm
+            setJobs={setJobs}
+            closeModal={() => setIsModalOpen(false)}
           />
         </Modal>
       )}
@@ -87,37 +169,6 @@ const Dashboard = () => {
   );
 };
 
-const MiniStat = ({ label, value }) => (
-  <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
-    <p className="text-xs text-slate-400 uppercase tracking-wide">
-      {label}
-    </p>
-    <p className="text-xl font-semibold mt-1">
-      {value}
-    </p>
-  </div>
-);
 
-/* Modal Component */
-const Modal = ({ children, onClose }) => {
-  useEffect(() => {
-    const handleEsc = (e) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", handleEsc);
-    return () => window.removeEventListener("keydown", handleEsc);
-  }, [onClose]);
-
-  return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm 
-                    flex items-center justify-center z-50">
-      <div className="bg-slate-900 border border-slate-800 
-                      rounded-2xl shadow-xl w-full max-w-lg p-8 
-                      animate-fadeIn">
-        {children}
-      </div>
-    </div>
-  );
-};
 
 export default Dashboard;

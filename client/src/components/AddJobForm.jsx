@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { createJob } from "../apis/jobs";
 import React from "react";
+import { Input, Select } from "./Input";
 
 const STATUS_OPTIONS = [
+  "saved",
   "applied",
   "shortlisted",
   "interview",
@@ -48,16 +50,24 @@ const AddJobForm = ({ setJobs, closeModal }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     if (!formData.company || !formData.role) return;
 
     try {
       setLoading(true);
 
-      const res = await createJob(formData);
+      const cleanedData = {
+        ...formData,
+        ctc: formData.ctc ? Number(formData.ctc) : undefined,
+        followUpDate: formData.followUpDate || undefined,
+        resume: formData.resume || undefined,
+        source: formData.source || undefined,
+        notes: formData.notes || undefined,
+      };
+
+      const res = await createJob(cleanedData);
       setJobs((prev) => [res.data, ...prev]);
 
-      closeModal(); // 👈 Close after success
+      closeModal();
     } catch (error) {
       console.error("Create failed:", error);
     } finally {
@@ -68,9 +78,16 @@ const AddJobForm = ({ setJobs, closeModal }) => {
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
 
-      <h2 className="text-2xl font-serif text-slate-100">
-        Add Application
-      </h2>
+      {/* Title */}
+      <div>
+        <h2 className="text-3xl font-serif 
+                       text-slate-800 dark:text-slate-200">
+          Add Application
+        </h2>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+          Quickly log your new opportunity.
+        </p>
+      </div>
 
       {/* Core Fields */}
       <div className="space-y-4">
@@ -115,13 +132,15 @@ const AddJobForm = ({ setJobs, closeModal }) => {
       <button
         type="button"
         onClick={() => setShowAdvanced(!showAdvanced)}
-        className="text-sm text-slate-400 hover:text-slate-200 transition"
+        className="text-sm text-slate-500 dark:text-slate-400
+                   hover:text-slate-800 dark:hover:text-slate-200 transition"
       >
         {showAdvanced ? "Hide details" : "More options"}
       </button>
 
       {showAdvanced && (
-        <div className="space-y-4 pt-4 border-t border-slate-800">
+        <div className="space-y-4 pt-4 
+                        border-t border-[#e5caca] dark:border-slate-800">
 
           <div className="grid grid-cols-2 gap-4">
             <Select
@@ -164,7 +183,8 @@ const AddJobForm = ({ setJobs, closeModal }) => {
           />
 
           <div>
-            <label className="block text-sm text-slate-400 mb-1">
+            <label className="block text-sm 
+                              text-slate-500 dark:text-slate-400 mb-1">
               Notes
             </label>
             <textarea
@@ -172,31 +192,33 @@ const AddJobForm = ({ setJobs, closeModal }) => {
               rows="3"
               value={formData.notes}
               onChange={handleChange}
-              className="w-full bg-slate-800 border border-slate-700 
-                         rounded-lg px-3 py-2 outline-none 
-                         focus:ring-1 focus:ring-slate-500"
+              className="modal-textarea"
             />
           </div>
 
-          <label className="flex items-center gap-2 text-sm text-slate-400">
+          <label className="flex items-center gap-2 
+                            text-sm text-slate-500 dark:text-slate-400">
             <input
               type="checkbox"
               name="referred"
               checked={formData.referred}
               onChange={handleChange}
+              className="accent-slate-600 dark:accent-slate-300"
             />
             Referred
           </label>
-
         </div>
       )}
 
       {/* Actions */}
-      <div className="flex justify-end gap-4 pt-4 border-t border-slate-800">
+      <div className="flex justify-end gap-4 pt-4 
+                      border-t border-[#e5caca] dark:border-slate-800">
+
         <button
           type="button"
           onClick={closeModal}
-          className="text-slate-400 hover:text-slate-200 transition"
+          className="text-slate-500 dark:text-slate-400
+                     hover:text-slate-800 dark:hover:text-slate-200 transition"
         >
           Cancel
         </button>
@@ -204,9 +226,10 @@ const AddJobForm = ({ setJobs, closeModal }) => {
         <button
           type="submit"
           disabled={loading}
-          className="bg-slate-200 text-slate-900 px-6 py-2 
-                     rounded-full font-medium 
-                     hover:bg-white transition 
+          className="bg-slate-800 text-white 
+                     dark:bg-white dark:text-slate-900
+                     px-6 py-2 rounded-full font-medium
+                     hover:opacity-90 transition 
                      disabled:opacity-50"
         >
           {loading ? "Adding..." : "Save"}
@@ -216,42 +239,8 @@ const AddJobForm = ({ setJobs, closeModal }) => {
   );
 };
 
-export default AddJobForm
+export default AddJobForm;
 
 
-const Input = React.forwardRef(
-  ({ label, ...props }, ref) => (
-    <div>
-      <label className="block text-sm text-slate-400 mb-1">
-        {label}
-      </label>
-      <input
-        ref={ref}
-        {...props}
-        className="w-full bg-slate-800 border border-slate-700 
-                   rounded-lg px-3 py-2 outline-none 
-                   focus:ring-1 focus:ring-slate-500"
-      />
-    </div>
-  )
-);
 
-const Select = ({ label, options, ...props }) => (
-  <div>
-    <label className="block text-sm text-slate-400 mb-1">
-      {label}
-    </label>
-    <select
-      {...props}
-      className="w-full bg-slate-800 border border-slate-700 
-                 rounded-lg px-3 py-2 outline-none 
-                 focus:ring-1 focus:ring-slate-500"
-    >
-      {options.map((opt) => (
-        <option key={opt} value={opt}>
-          {opt}
-        </option>
-      ))}
-    </select>
-  </div>
-);
+

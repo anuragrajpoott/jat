@@ -1,5 +1,6 @@
 import { updateJob, deleteJob } from "../apis/jobs";
 import React from "react";
+import StatusSelect from "../components/StatusSelect"
 
 const STATUS_OPTIONS = [
   "saved",
@@ -13,9 +14,27 @@ const STATUS_OPTIONS = [
 const PRIORITY_OPTIONS = ["low", "medium", "high"];
 
 const JobTable = ({ jobs, setJobs }) => {
-  const handleUpdate = async (id, field, value) => {
-    try {
-      const res = await updateJob(id, { [field]: value });
+ const handleUpdate = async (id, field, value) => {
+  try {
+    let cleanedValue = value;
+
+    // Clean number
+    if (field === "ctc") {
+      cleanedValue = value ? Number(value) : undefined;
+    }
+
+    // Clean dates
+    if (field === "appliedDate" || field === "followUpDate") {
+      cleanedValue = value || undefined;
+    }
+
+    // Clean empty strings
+    if (value === "") {
+      cleanedValue = undefined;
+    }
+
+    const res = await updateJob(id, { [field]: cleanedValue });
+
 
       setJobs((prev) =>
         prev.map((job) =>
@@ -49,46 +68,59 @@ const JobTable = ({ jobs, setJobs }) => {
   };
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
-      <table className="w-full text-sm">
+    <div className="overflow-x-auto">
+      <table className="min-w-full text-sm">
 
-        <thead className="bg-slate-950 text-slate-400 uppercase tracking-wide text-xs">
+        {/* Header */}
+        <thead className="sticky top-0 z-10 
+                           bg-[#f0dada] dark:bg-slate-900
+                           text-slate-600 dark:text-slate-400
+                           uppercase tracking-wide text-xs">
           <tr>
-            <th className="px-4 py-3 text-left">Company</th>
-            <th className="px-4 py-3 text-left">Role</th>
-            <th className="px-4 py-3 text-left">Status</th>
-            <th className="px-4 py-3 text-left">Priority</th>
-            <th className="px-4 py-3 text-left">CTC</th>
-            <th className="px-4 py-3 text-left">Source</th>
-            <th className="px-4 py-3 text-left">Referred</th>
-            <th className="px-4 py-3 text-left">Applied</th>
-            <th className="px-4 py-3 text-left">Follow Up</th>
-            <th className="px-4 py-3 text-left">Resume</th>
-            <th className="px-4 py-3 text-left">Notes</th>
-            <th className="px-4 py-3 text-left"></th>
+            {[
+              "Company", "Role", "Status", "Priority", "CTC",
+              "Source", "Referred", "Applied", "Follow Up",
+              "Resume", "Notes", ""
+            ].map((col) => (
+              <th key={col} className="px-4 py-3 text-left whitespace-nowrap">
+                {col}
+              </th>
+            ))}
           </tr>
         </thead>
 
+        {/* Body */}
         <tbody>
           {jobs.length === 0 ? (
             <tr>
-              <td colSpan="12" className="text-center py-10 text-slate-500">
-                No applications yet
+              <td colSpan="12" className="text-center py-16">
+                <div className="flex flex-col items-center gap-3 text-slate-500 dark:text-slate-400">
+                  <p className="text-lg font-medium">
+                    No applications yet
+                  </p>
+                  <p className="text-sm">
+                    Click “Add” to start tracking your job hunt.
+                  </p>
+                </div>
               </td>
             </tr>
           ) : (
             jobs.map((job) => (
               <tr
                 key={job._id}
-                className={`border-t border-slate-800 hover:bg-slate-950/60 transition ${
-                  isStale(job) ? "bg-yellow-500/5" : ""
+                className={`border-t border-[#e5caca] dark:border-slate-800
+                            hover:bg-[#faf3f3] dark:hover:bg-slate-900/60
+                            transition ${
+                  isStale(job)
+                    ? "bg-yellow-100/40 dark:bg-yellow-500/10"
+                    : ""
                 }`}
               >
                 {/* Company */}
-                <td className="px-4 py-3">
+                <td className="px-4 py-3 whitespace-nowrap">
                   <div className="flex items-center gap-2">
                     {isStale(job) && (
-                      <span className="w-2 h-2 bg-yellow-400 rounded-full" />
+                      <span className="w-2 h-2 bg-yellow-500 rounded-full" />
                     )}
                     <input
                       defaultValue={job.company}
@@ -101,7 +133,7 @@ const JobTable = ({ jobs, setJobs }) => {
                 </td>
 
                 {/* Role */}
-                <td className="px-4 py-3">
+                <td className="px-4 py-3 whitespace-nowrap">
                   <input
                     defaultValue={job.role}
                     onBlur={(e) =>
@@ -112,7 +144,7 @@ const JobTable = ({ jobs, setJobs }) => {
                 </td>
 
                 {/* Status */}
-                <td className="px-4 py-3">
+                <td className="px-4 py-3 whitespace-nowrap">
                   <StatusSelect
                     value={job.status}
                     onChange={(value) =>
@@ -122,7 +154,7 @@ const JobTable = ({ jobs, setJobs }) => {
                 </td>
 
                 {/* Priority */}
-                <td className="px-4 py-3">
+                <td className="px-4 py-3 whitespace-nowrap">
                   <select
                     value={job.priority}
                     onChange={(e) =>
@@ -139,7 +171,7 @@ const JobTable = ({ jobs, setJobs }) => {
                 </td>
 
                 {/* CTC */}
-                <td className="px-4 py-3">
+                <td className="px-4 py-3 whitespace-nowrap">
                   <input
                     type="number"
                     defaultValue={job.ctc || ""}
@@ -151,7 +183,7 @@ const JobTable = ({ jobs, setJobs }) => {
                 </td>
 
                 {/* Source */}
-                <td className="px-4 py-3">
+                <td className="px-4 py-3 whitespace-nowrap">
                   <input
                     defaultValue={job.source || ""}
                     onBlur={(e) =>
@@ -162,19 +194,19 @@ const JobTable = ({ jobs, setJobs }) => {
                 </td>
 
                 {/* Referred */}
-                <td className="px-4 py-3 text-center">
+                <td className="px-4 py-3 text-center whitespace-nowrap">
                   <input
                     type="checkbox"
                     checked={job.referred || false}
                     onChange={(e) =>
                       handleUpdate(job._id, "referred", e.target.checked)
                     }
-                    className="accent-slate-400"
+                    className="accent-slate-500"
                   />
                 </td>
 
                 {/* Applied */}
-                <td className="px-4 py-3">
+                <td className="px-4 py-3 whitespace-nowrap">
                   <input
                     type="date"
                     value={
@@ -190,7 +222,7 @@ const JobTable = ({ jobs, setJobs }) => {
                 </td>
 
                 {/* Follow Up */}
-                <td className="px-4 py-3">
+                <td className="px-4 py-3 whitespace-nowrap">
                   <input
                     type="date"
                     value={
@@ -206,10 +238,9 @@ const JobTable = ({ jobs, setJobs }) => {
                 </td>
 
                 {/* Resume */}
-                <td className="px-4 py-3">
+                <td className="px-4 py-3 whitespace-nowrap">
                   <input
                     defaultValue={job.resume || ""}
-                    placeholder="URL"
                     onBlur={(e) =>
                       handleUpdate(job._id, "resume", e.target.value)
                     }
@@ -218,7 +249,7 @@ const JobTable = ({ jobs, setJobs }) => {
                 </td>
 
                 {/* Notes */}
-                <td className="px-4 py-3">
+                <td className="px-4 py-3 whitespace-nowrap">
                   <input
                     defaultValue={job.notes || ""}
                     onBlur={(e) =>
@@ -229,10 +260,10 @@ const JobTable = ({ jobs, setJobs }) => {
                 </td>
 
                 {/* Delete */}
-                <td className="px-4 py-3 text-right">
+                <td className="px-4 py-3 text-right whitespace-nowrap">
                   <button
                     onClick={() => handleDelete(job._id)}
-                    className="text-slate-500 hover:text-red-400 transition"
+                    className="text-slate-500 hover:text-red-500 transition"
                   >
                     ✕
                   </button>
@@ -247,29 +278,6 @@ const JobTable = ({ jobs, setJobs }) => {
   );
 };
 
-const StatusSelect = ({ value, onChange }) => {
-  const colors = {
-    saved: "bg-gray-200 text-gray-800",
-    applied: "bg-blue-100 text-blue-800",
-    shortlisted: "bg-indigo-100 text-indigo-800",
-    interview: "bg-purple-100 text-purple-800",
-    offer: "bg-green-100 text-green-800",
-    rejected: "bg-red-100 text-red-700",
-  };
 
-  return (
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className={`rounded-full px-3 py-1 text-xs font-medium ${colors[value]}`}
-    >
-      {STATUS_OPTIONS.map((status) => (
-        <option key={status} value={status}>
-          {status}
-        </option>
-      ))}
-    </select>
-  );
-};
 
 export default JobTable;
